@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Super Mario Level Mode</title>
+<style>
+    :root {
+        --sky-color: #6b8cff;
+    }
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: #202020;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        overflow: hidden;
+        color: white;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+    }
+    #game-container {
+        position: relative;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        border: 4px solid #fff;
+        border-radius: 4px;
+        background-color: var(--sky-color);
+        width: 800px;
+        height: 400px;
+        max-width: 100%;
+        max-height: 60vh;
+        overflow: hidden;
+    }
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* UI OVERLAY */
+    .ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+    
+    /* TOP INFO BAR */
+    .top-info-bar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+    .creator-text {
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 2px 2px 0 #000;
+        margin-bottom: 5px;
+        background: rgba(0,0,0,0.3);
+        padding: 2px 10px;
+        border-radius: 10px;
+    }
+    .progress-container {
+        width: 60%;
+        height: 10px;
+        background: rgba(0,0,0,0.5);
+        border: 2px solid white;
+        margin: 0 auto;
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+    }
+    .progress-bar {
+        height: 100%;
+        background: #ffd700;
+        width: 0%;
+        transition: width 0.1s linear;
+    }
+    .level-flag {
+        position: absolute;
+        right: 0;
+        top: -5px;
+        font-size: 16px;
+    }
+    .hud-top {
+        display: flex;
+        justify-content: space-between;
+        width: 90%;
+        font-weight: 900;
+        font-size: 20px;
+        text-shadow: 2px 2px 0 #000;
+        font-family: monospace;
+        margin-top: 5px;
+    }
+    
+    /* CONTROLS */
+    .controls-area {
+        pointer-events: auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        width: 100%;
+        padding-bottom: 5px;
+    }
+    .btn-group {
+        display: flex;
+        gap: 10px;
+    }
+    .game-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255,255,255,0.8);
+        color: white;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        font-weight: bold;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 5px rgba(0,0,0,0.3);
+        text-transform: uppercase;
+        text-shadow: 1px 1px 0 #000;
+        backdrop-filter: blur(2px);
+    }
+    .game-btn:active {
+        background: rgba(255, 255, 255, 0.5);
+        transform: scale(0.9);
+    }
+    .btn-jump { background: rgba(0, 255, 0, 0.3); border-color: #4eff4e; }
+    .btn-long { background: rgba(0, 100, 255, 0.3); border-color: #4e9aff; }
+    .btn-shoot { background: rgba(255, 0, 0, 0.3); border-color: #ff4e4e; width: 60px; height: 60px; font-size: 13px; }
+
+    /* SCREENS */
+    #start-screen, #game-over-screen, #win-screen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        padding: 30px 50px;
+        border-radius: 15px;
+        text-align: center;
+        border: 4px solid #fff;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        z-index: 20;
+    }
+    button.menu-btn {
+        background: #e52521;
+        color: white;
+        border: 3px solid #fff;
+        padding: 12px 30px;
+        font-size: 22px;
+        font-weight: 900;
+        cursor: pointer;
+        border-radius: 8px;
+        text-transform: uppercase;
+        font-family: inherit;
+        box-shadow: 0 4px 0 #8b1715;
+    }
+    button.menu-btn:active {
+        box-shadow: 0 2px 0 #8b1715;
+        transform: translateY(2px);
+    }
+    .hidden { display: none !important; }
+
+    /* LEVEL TRANSITION */
+    #level-transition-screen {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: white;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    #level-text-big {
+        font-size: 80px;
+        font-weight: 900;
+        color: #000;
+        text-transform: uppercase;
+    }
+    #transition-runner {
+        position: absolute;
+        top: 50%;
+        left: -100px;
+        width: 100px;
+        height: 100px;
+        transform: translateY(-50%);
+    }
+</style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="ui-layer">
+            
+            <!-- Top Bar -->
+            <div class="top-info-bar">
+                <div class="creator-text">Game created by Faiz Sir</div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                    <div class="level-flag">🏰</div>
+                </div>
+                
+                <div class="hud-top">
+                    <span>LEVEL <span id="currentLevelDisplay">1</span></span>
+                    <span>SCORE <span id="scoreDisplay">0</span></span>
+                </div>
+                <div style="font-size:10px; color:#ccc; margin-top:-5px;" id="imgStatus">Loading Asset...</div>
+            </div>
+
+            <!-- Controls Bottom -->
+            <div class="controls-area">
+                <div class="btn-group">
+                    <div class="game-btn btn-shoot" id="btnShoot">Fire</div>
+                </div>
+                <div class="btn-group">
+                    <div class="game-btn btn-long" id="btnLongJump">Long</div>
+                    <div class="game-btn btn-jump" id="btnJump">Jump</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREENS -->
+        <div id="start-screen">
+            <h1 style="margin:0; color:#ffd700; text-shadow: 3px 3px 0 #000;">SUPER RUNNER</h1>
+            <p style="color:#fff; margin:0; font-size:18px;">Level 1 - To the Castle!</p>
+            <button class="menu-btn" id="startBtn">START GAME</button>
+        </div>
+
+        <div id="game-over-screen" class="hidden">
+            <h1 style="margin:0; color:#e52521; text-shadow: 3px 3px 0 #000;">GAME OVER</h1>
+            <p style="color:#fff;">Score: <span id="finalScoreDisplay">0</span></p>
+            <button class="menu-btn" id="restartBtn">TRY AGAIN</button>
+        </div>
+
+        <div id="win-screen" class="hidden">
+            <h1 style="margin:0; color:#4eff4e; text-shadow: 3px 3px 0 #000;">LEVEL CLEAR!</h1>
+            <p style="color:#fff;">Completed Level <span id="clearedLevelDisplay">1</span></p>
+            <button class="menu-btn" id="nextLevelBtn">NEXT LEVEL</button>
+        </div>
+
+        <!-- TRANSITION OVERLAY -->
+        <div id="level-transition-screen" class="hidden">
+            <div id="level-text-big">LEVEL 2</div>
+            <img id="transition-runner" src="" alt="Runner">
+        </div>
+    </div>
+
+<script>
+/* ================= CONFIG ================= */
+const CHARACTER_URL = "https://i.ibb.co/QjPwGXdx/1762529761049.png";
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 400;
+const BASE_LEVEL_LENGTH = 3000; 
+
+/* ================= PHYSICS & STATE ================= */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const PHYSICS = {
+    gravity: 0.6,
+    jumpStrength: -12,
+    longJumpStrength: -16,
+    groundY: 340
+};
+
+let gameState = {
+    active: false,
+    over: false,
+    won: false,
+    transitioning: false,
+    currentLevel: 1,
+    score: 0,
+    distance: 0,
+    speed: 6,
+    frames: 0,
+    levelLength: BASE_LEVEL_LENGTH
+};
+
+let player = {
+    x: 100, 
+    y: 300, 
+    w: 50, // Hitbox Width
+    h: 50, // Hitbox Height
+    vy: 0, 
+    grounded: false
+};
+
+// Entity Arrays
+let obstacles = [];
+let enemies = [];
+let coins = [];
+let bullets = [];
+let clouds = [];
+let castle = null;
+
+/* ================= AUDIO SYSTEM ================= */
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'jump') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now+0.1);
+    } else if (type === 'shoot') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now+0.1);
+    } else if (type === 'coin') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.setValueAtTime(1200, now + 0.05);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now); osc.stop(now+0.3);
+    } else if (type === 'gameover') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now); osc.stop(now+0.5);
+    } else if (type === 'win') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(523, now);
+        osc.frequency.setValueAtTime(659, now + 0.1);
+        osc.frequency.setValueAtTime(783, now + 0.2);
+        osc.frequency.setValueAtTime(1046, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.6);
+        osc.start(now); osc.stop(now+0.6);
+    }
+}
+
+/* ================= IMAGE HANDLING (Zoom & BG Removal) ================= */
+const charImg = new Image();
+const transitionRunnerImg = document.getElementById('transition-runner');
+let charLoaded = false;
+
+charImg.crossOrigin = "Anonymous";
+
+charImg.onload = () => {
+    try {
+        // Magic White Background Removal
+        const tempC = document.createElement('canvas');
+        tempC.width = charImg.width;
+        tempC.height = charImg.height;
+        const tCtx = tempC.getContext('2d');
+        tCtx.drawImage(charImg, 0, 0);
+        
+        const imgData = tCtx.getImageData(0, 0, tempC.width, tempC.height);
+        const data = imgData.data;
+        
+        for(let i=0; i<data.length; i+=4) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            if(r>230 && g>230 && b>230) data[i+3] = 0; // Make transparent
+        }
+        tCtx.putImageData(imgData, 0, 0);
+        
+        const finalImg = new Image();
+        finalImg.onload = () => {
+            charImg.src = finalImg.src;
+            transitionRunnerImg.src = finalImg.src; // Set image for transition animation
+            charImg.onload = null;
+            charLoaded = true;
+            document.getElementById('imgStatus').textContent = "Ready";
+        };
+        finalImg.src = tempC.toDataURL();
+        
+    } catch(e) {
+        // Fallback if security blocks pixel reading
+        charLoaded = true;
+        transitionRunnerImg.src = charImg.src;
+        document.getElementById('imgStatus').textContent = "Loaded (No BG fix)";
+    }
+};
+charImg.src = CHARACTER_URL;
+
+/* ================= GAME CONTROL ================= */
+function jump(isLong) {
+    if (player.grounded && gameState.active && !gameState.transitioning) {
+        player.vy = isLong ? PHYSICS.longJumpStrength : PHYSICS.jumpStrength;
+        player.grounded = false;
+        playSound('jump');
+    }
+}
+
+function shoot() {
+    if (!gameState.active || gameState.over || gameState.transitioning) return;
+    playSound('shoot');
+    bullets.push({ x: player.x + 50, y: player.y + 25, w: 12, h: 12, speed: 12 });
+}
+
+function startGame(level) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    
+    gameState.currentLevel = level;
+    if(level === 1) gameState.score = 0; // Only reset score on level 1
+
+    resetLevel();
+    
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('win-screen').classList.add('hidden');
+    document.getElementById('level-transition-screen').classList.add('hidden');
+    document.getElementById('level-transition-screen').style.opacity = 0;
+    
+    gameState.active = true;
+    gameState.over = false;
+    gameState.won = false;
+    gameState.transitioning = false;
+    
+    updateHUD();
+    gameLoop();
+}
+
+function resetLevel() {
+    player.y = PHYSICS.groundY - player.h;
+    player.vy = 0;
+    obstacles = []; enemies = []; coins = []; bullets = []; castle = null;
+    
+    gameState.distance = 0;
+    gameState.frames = 0;
+    
+    // Difficulty scaling
+    gameState.speed = 6 + (gameState.currentLevel - 1); 
+    gameState.levelLength = BASE_LEVEL_LENGTH + (gameState.currentLevel - 1) * 1000;
+}
+
+function updateHUD() {
+    document.getElementById('scoreDisplay').innerText = gameState.score;
+    document.getElementById('currentLevelDisplay').innerText = gameState.currentLevel;
+    document.getElementById('progressBar').style.width = "0%";
+}
+
+/* ================= UPDATE LOGIC ================= */
+function update() {
+    if(gameState.transitioning) return;
+
+    gameState.frames++;
+    gameState.distance += gameState.speed;
+    
+    // Progress Bar
+    let prog = Math.min(100, (gameState.distance / gameState.levelLength)*100);
+    document.getElementById('progressBar').style.width = prog + "%";
+
+    // Physics
+    player.vy += PHYSICS.gravity;
+    player.y += player.vy;
+    if(player.y >= PHYSICS.groundY - player.h) {
+        player.y = PHYSICS.groundY - player.h;
+        player.vy = 0;
+        player.grounded = true;
+    }
+
+    // Castle Spawn
+    if(gameState.distance > gameState.levelLength && !castle) {
+        castle = { x: GAME_WIDTH + 100, y: PHYSICS.groundY - 150, w: 100, h: 150 };
+    }
+    if(castle) {
+        castle.x -= gameState.speed;
+        if(player.x + player.w > castle.x + 40) { winGame(); return; }
+    } else {
+        spawnEntities();
+    }
+
+    // Entities
+    updateEntities();
+}
+
+function spawnEntities() {
+    // Spawn faster on higher levels
+    let rate = Math.max(30, 100 - (gameState.currentLevel * 5));
+    
+    if (gameState.frames % rate === 0) {
+        let r = Math.random();
+        if (r < 0.4) { // Pipe
+            let h = 40 + Math.random() * 60;
+            obstacles.push({ x: GAME_WIDTH, y: PHYSICS.groundY - h, w: 50, h: h });
+        } else if (r < 0.7) { // Enemy
+            enemies.push({ x: GAME_WIDTH, y: PHYSICS.groundY - 40, w: 40, h: 40, dead: false });
+        } else { // Coins
+            for(let i=0; i<3; i++) coins.push({ x: GAME_WIDTH + (i*40), y: PHYSICS.groundY - 90, w: 20, h: 20, collected:false });
+        }
+    }
+}
+
+function updateEntities() {
+    // Bullets
+    bullets.forEach((b,i) => {
+        b.x += b.speed; b.y += 2;
+        if(b.y > PHYSICS.groundY - 10) b.y = PHYSICS.groundY - 10;
+        if(b.x > GAME_WIDTH) bullets.splice(i,1);
+    });
+
+    // Pipes
+    obstacles.forEach((o,i) => {
+        o.x -= gameState.speed;
+        if(rectIntersect(player, o)) gameOver();
+        if(o.x < -50) obstacles.splice(i,1);
+    });
+
+    // Enemies
+    enemies.forEach((e,i) => {
+        e.x -= (gameState.speed + 1);
+        if(e.dead) { e.timer++; if(e.timer>10) enemies.splice(i,1); return; }
+        
+        // Bullet hit
+        bullets.forEach((b, bi) => {
+            if(rectIntersect(b,e)) {
+                e.dead=true; e.timer=0; bullets.splice(bi,1);
+                gameState.score += 50;
+                document.getElementById('scoreDisplay').innerText = gameState.score;
+            }
+        });
+
+        // Player hit
+        if(!e.dead && rectIntersect(player,e)) {
+            if(player.vy > 0 && player.y+player.h < e.y+e.h/2) {
+                e.dead=true; e.timer=0; player.vy = -10;
+                gameState.score += 100;
+                playSound('shoot'); // reuse sound for stomp
+            } else {
+                gameOver();
+            }
+        }
+        if(e.x < -50) enemies.splice(i,1);
+    });
+
+    // Coins
+    coins.forEach((c,i) => {
+        c.x -= gameState.speed;
+        if(!c.collected && rectIntersect(player, c)) {
+            c.collected=true; gameState.score += 20; playSound('coin');
+        }
+        if(c.x < -50 || c.collected) coins.splice(i,1);
+    });
+
+    // Clouds
+    clouds.forEach(c => c.x -= c.s);
+    if(Math.random()<0.02) clouds.push({x:GAME_WIDTH, y:Math.random()*200, s:Math.random()*0.5+0.2});
+}
+
+function rectIntersect(r1, r2) {
+    return !(r2.x > r1.x + r1.w - 8 || r2.x + r2.w < r1.x + 8 || r2.y > r1.y + r1.h - 8 || r2.y + r2.h < r1.y + 8);
+}
+
+function gameOver() {
+    gameState.active = false; gameState.over = true; playSound('gameover');
+    document.getElementById('finalScoreDisplay').innerText = gameState.score;
+    document.getElementById('game-over-screen').classList.remove('hidden');
+}
+
+function winGame() {
+    gameState.active = false; gameState.won = true; playSound('win');
+    document.getElementById('clearedLevelDisplay').innerText = gameState.currentLevel;
+    document.getElementById('win-screen').classList.remove('hidden');
+    draw();
+}
+
+function runTransition() {
+    let nextLevel = gameState.currentLevel + 1;
+    let screen = document.getElementById('level-transition-screen');
+    let txt = document.getElementById('level-text-big');
+    let runner = document.getElementById('transition-runner');
+    
+    document.getElementById('win-screen').classList.add('hidden');
+    screen.classList.remove('hidden');
+    screen.style.opacity = 1;
+    txt.innerText = "LEVEL " + nextLevel;
+    
+    // Animation
+    gameState.transitioning = true;
+    runner.style.left = "-100px";
+    let pos = -100;
+    let interval = setInterval(() => {
+        pos += 20;
+        runner.style.left = pos + "px";
+        if(pos > window.innerWidth + 100) {
+            clearInterval(interval);
+            startGame(nextLevel);
+        }
+    }, 16);
+}
+
+/* ================= DRAWING ================= */
+function draw() {
+    // Sky
+    ctx.fillStyle = "#6b8cff"; 
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Clouds
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    clouds.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, 30, 0, Math.PI*2); ctx.fill(); });
+
+    // Ground
+    ctx.fillStyle = "#5C9E39"; ctx.fillRect(0, PHYSICS.groundY, GAME_WIDTH, GAME_HEIGHT);
+    ctx.fillStyle = "#d9a066"; ctx.fillRect(0, PHYSICS.groundY+15, GAME_WIDTH, GAME_HEIGHT);
+
+    // Castle
+    if(castle) {
+        ctx.fillStyle="#ccc"; ctx.fillRect(castle.x, castle.y, castle.w, castle.h);
+        ctx.fillStyle="#999"; ctx.fillRect(castle.x+20, castle.y+50, 20, 20);
+        ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(castle.x+50, castle.y+150, 30, Math.PI, 0); ctx.fill();
+        ctx.fillStyle="red"; ctx.beginPath(); ctx.moveTo(castle.x+55, castle.y-100); ctx.lineTo(castle.x+90, castle.y-85); ctx.lineTo(castle.x+55, castle.y-70); ctx.fill();
+        ctx.fillStyle="white"; ctx.fillRect(castle.x+50, castle.y-100, 5, 100);
+    }
+
+    // Obstacles
+    obstacles.forEach(o => {
+        let g = ctx.createLinearGradient(o.x,0,o.x+o.w,0); g.addColorStop(0,"#005500"); g.addColorStop(0.5,"#00aa00"); g.addColorStop(1,"#005500");
+        ctx.fillStyle=g; ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.strokeStyle="#002200"; ctx.lineWidth=3; ctx.strokeRect(o.x, o.y, o.w, o.h);
+        ctx.fillStyle="#00aa00"; ctx.fillRect(o.x-4, o.y, o.w+8, 25); ctx.strokeRect(o.x-4, o.y, o.w+8, 25);
+    });
+
+    // Enemies
+    enemies.forEach(e => {
+        if(e.dead) { ctx.fillStyle="#8B4513"; ctx.fillRect(e.x, e.y+20, e.w, e.h/2); return; }
+        ctx.fillStyle="#8B4513"; ctx.beginPath(); ctx.arc(e.x+20, e.y+20, 20, 0, Math.PI, true); ctx.fill();
+        ctx.fillRect(e.x+5, e.y+20, 30, 20);
+        ctx.fillStyle="black"; ctx.fillRect(e.x, e.y+35, 12, 8); ctx.fillRect(e.x+28, e.y+35, 12, 8);
+        ctx.fillStyle="white"; ctx.fillRect(e.x+10, e.y+10, 6, 6); ctx.fillRect(e.x+24, e.y+10, 6, 6);
+    });
+
+    // Coins
+    coins.forEach(c => { ctx.fillStyle="#FFD700"; ctx.beginPath(); ctx.arc(c.x+10, c.y+10, 10, 0, Math.PI*2); ctx.fill(); });
+
+    // Bullets
+    ctx.fillStyle="orange"; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI*2); ctx.fill(); });
+
+    // Player (ZOOMED IN)
+    if (charLoaded) {
+        // We draw the image larger (70x70) than the hitbox (50x50) and offset it to center it
+        // This creates the "Zoom" effect on the face/character
+        ctx.drawImage(charImg, player.x - 10, player.y - 10, 70, 70);
+    } else {
+        ctx.fillStyle = "red"; ctx.fillRect(player.x, player.y, player.w, player.h);
+    }
+}
+
+function gameLoop() {
+    if (gameState.active) {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+/* ================= EVENT LISTENERS ================= */
+window.addEventListener('keydown', e => {
+    if(gameState.transitioning) return;
+    if(e.code==='Space' || e.code==='ArrowUp') { 
+        if(!gameState.active) startGame(1); else jump(false); 
+    }
+    if(e.code==='ShiftLeft' || e.code==='ArrowDown') jump(true);
+    if(e.code==='KeyF') shoot();
+});
+
+document.getElementById('btnJump').addEventListener('pointerdown', (e)=>{e.preventDefault(); jump(false)});
+document.getElementById('btnLongJump').addEventListener('pointerdown', (e)=>{e.preventDefault(); jump(true)});
+document.getElementById('btnShoot').addEventListener('pointerdown', (e)=>{e.preventDefault(); shoot()});
+
+document.getElementById('startBtn').addEventListener('click', () => startGame(1));
+document.getElementById('restartBtn').addEventListener('click', () => startGame(gameState.currentLevel));
+document.getElementById('nextLevelBtn').addEventListener('click', runTransition);
+
+// Init
+window.onload = () => {
+    canvas.width = GAME_WIDTH; 
+    canvas.height = GAME_HEIGHT;
+    draw(); // Initial draw
+};
+
+</script>
+</body>
+</html>
+
+
